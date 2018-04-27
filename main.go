@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"crypto/tls"
 	"errors"
 	"flag"
 	"fmt"
@@ -16,16 +15,10 @@ import (
 	"strings"
 	"text/template"
 	"time"
-
-	"golang.org/x/crypto/acme/autocert"
 )
 
 var (
-	httpFlag  = flag.String("http", ":8080", "Serve HTTP at given address")
-	httpsFlag = flag.String("https", "", "Serve HTTPS at given address")
-	certFlag  = flag.String("cert", "", "Use the provided TLS certificate")
-	keyFlag   = flag.String("key", "", "Use the provided TLS key")
-	acmeFlag  = flag.String("acme", "", "Auto-request TLS certs and store in given directory")
+	httpFlag = flag.String("http", ":8080", "Serve HTTP at given address")
 )
 
 var httpServer = &http.Server{
@@ -53,65 +46,18 @@ func run() error {
 
 	http.HandleFunc("/", handler)
 
-	if *httpFlag == "" && *httpsFlag == "" {
-		return fmt.Errorf("must provide -http and/or -https")
-	}
-	if *acmeFlag != "" && *httpsFlag == "" {
-		return fmt.Errorf("cannot use -acme without -https")
-	}
-	if *acmeFlag != "" && (*certFlag != "" || *keyFlag != "") {
-		return fmt.Errorf("cannot provide -acme with -key or -cert")
-	}
-	if *acmeFlag == "" && (*httpsFlag != "" || *certFlag != "" || *keyFlag != "") && (*httpsFlag == "" || *certFlag == "" || *keyFlag == "") {
-		return fmt.Errorf("-https -cert and -key must be used together")
+	if *httpFlag == "" {
+		return fmt.Errorf("must provide -http")
 	}
 
 	ch := make(chan error, 2)
 
-	if *acmeFlag != "" {
-		// So a potential error is seen upfront.
-		if err := os.MkdirAll(*acmeFlag, 0700); err != nil {
-			return err
-		}
-	}
-
-	if *httpFlag != "" && (*httpsFlag == "" || *acmeFlag == "") {
-		server := *httpServer
+	if *httpFlag != "" {
+		server := httpServer
 		server.Addr = *httpFlag
 		go func() {
 			ch <- server.ListenAndServe()
 		}()
-	}
-	if *httpsFlag != "" {
-		server := *httpServer
-		server.Addr = *httpsFlag
-		if *acmeFlag != "" {
-			m := autocert.Manager{
-				ForceRSA:    true,
-				Prompt:      autocert.AcceptTOS,
-				Cache:       autocert.DirCache(*acmeFlag),
-				RenewBefore: 24 * 30 * time.Hour,
-				HostPolicy: autocert.HostWhitelist(
-					"localhost",
-					"gopkg.in",
-					"p1.gopkg.in",
-					"p2.gopkg.in",
-					"p3.gopkg.in",
-					"mup.labix.org",
-				),
-				Email: "gustavo@niemeyer.net",
-			}
-			server.TLSConfig = &tls.Config{
-				GetCertificate: m.GetCertificate,
-			}
-			go func() {
-				ch <- http.ListenAndServe(":80", m.HTTPHandler(nil))
-			}()
-		}
-		go func() {
-			ch <- server.ListenAndServeTLS(*certFlag, *keyFlag)
-		}()
-
 	}
 	return <-ch
 }
@@ -218,19 +164,18 @@ func (repo *Repo) GopkgVersionRoot(version Version) string {
 	v := version.String()
 	if repo.OldFormat {
 		if repo.User == "" {
-			return "gopkg.in/" + v + "/" + repo.Name
+			return "gopkg.ilv.pw/" + v + "/" + repo.Name
 		} else {
-			return "gopkg.in/" + repo.User + "/" + v + "/" + repo.Name
+			return "gopkg.ilv.pw/" + repo.User + "/" + v + "/" + repo.Name
 		}
 	} else {
 		if repo.User == "" {
-			return "gopkg.in/" + repo.Name + "." + v
+			return "gopkg.ilv.pw/" + repo.Name + "." + v
 		} else {
-			return "gopkg.in/" + repo.User + "/" + repo.Name + "." + v
+			return "gopkg.ilv.pw/" + repo.User + "/" + repo.Name + "." + v
 		}
 	}
 }
-
 
 var patternOld = regexp.MustCompile(`^/(?:([a-z0-9][-a-z0-9]+)/)?((?:v0|v[1-9][0-9]*)(?:\.0|\.[1-9][0-9]*){0,2}(?:-unstable)?)/([a-zA-Z][-a-zA-Z0-9]*)(?:\.git)?((?:/[a-zA-Z][-a-zA-Z0-9]*)*)$`)
 var patternNew = regexp.MustCompile(`^/(?:([a-zA-Z0-9][-a-zA-Z0-9]+)/)?([a-zA-Z][-.a-zA-Z0-9]*)\.((?:v0|v[1-9][0-9]*)(?:\.0|\.[1-9][0-9]*){0,2}(?:-unstable)?)(?:\.git)?((?:/[a-zA-Z0-9][-.a-zA-Z0-9]*)*)$`)
@@ -244,7 +189,7 @@ func handler(resp http.ResponseWriter, req *http.Request) {
 	log.Printf("%s requested %s", req.RemoteAddr, req.URL)
 
 	if req.URL.Path == "/" {
-		resp.Header().Set("Location", "http://labix.org/gopkg.in")
+		resp.Header().Set("Location", "https://ilyaglotov.com")
 		resp.WriteHeader(http.StatusTemporaryRedirect)
 		return
 	}

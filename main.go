@@ -18,7 +18,9 @@ import (
 )
 
 var (
-	httpFlag = flag.String("http", ":8080", "Serve HTTP at given address")
+	httpFlag         = flag.String("http", ":8080", "Serve HTTP at given address")
+	domainFlag       = flag.String("domain", "gopkg.ilya.app/", "Import domain name")
+	homeRedirectFlag = flag.String("home", "http://labix.org/gopkg.in", "Domain to redirect on empty slash")
 )
 
 var httpServer = &http.Server{
@@ -164,15 +166,15 @@ func (repo *Repo) GopkgVersionRoot(version Version) string {
 	v := version.String()
 	if repo.OldFormat {
 		if repo.User == "" {
-			return "gopkg.ilv.pw/" + v + "/" + repo.Name
+			return *domainFlag + v + "/" + repo.Name
 		} else {
-			return "gopkg.ilv.pw/" + repo.User + "/" + v + "/" + repo.Name
+			return *domainFlag + repo.User + "/" + v + "/" + repo.Name
 		}
 	} else {
 		if repo.User == "" {
-			return "gopkg.ilv.pw/" + repo.Name + "." + v
+			return *domainFlag + repo.Name + "." + v
 		} else {
-			return "gopkg.ilv.pw/" + repo.User + "/" + repo.Name + "." + v
+			return *domainFlag + repo.User + "/" + repo.Name + "." + v
 		}
 	}
 }
@@ -189,7 +191,7 @@ func handler(resp http.ResponseWriter, req *http.Request) {
 	log.Printf("%s requested %s", req.RemoteAddr, req.URL)
 
 	if req.URL.Path == "/" {
-		resp.Header().Set("Location", "http://labix.org/gopkg.in")
+		resp.Header().Set("Location", *homeRedirectFlag)
 		resp.WriteHeader(http.StatusTemporaryRedirect)
 		return
 	}

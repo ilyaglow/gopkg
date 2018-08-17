@@ -19,7 +19,7 @@ import (
 
 var (
 	httpFlag         = flag.String("http", ":8080", "Serve HTTP at given address")
-	domainFlag       = flag.String("domain", "gopkg.ilya.app/", "Import domain name")
+	domainFlag       = flag.String("domain", "gopkg.in/", "Import domain name")
 	homeRedirectFlag = flag.String("home", "http://labix.org/gopkg.in", "Domain to redirect on empty slash")
 )
 
